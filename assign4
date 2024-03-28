@@ -1,0 +1,142 @@
+#!/usr/bin/env python3
+from collections import deque
+from datetime import datetime
+
+class FIFOAlgo:
+    def __init__(self, num_frames):
+        self.num_frames = num_frames
+        self.frames = deque(maxlen=num_frames)
+
+    def exec(self, page):
+        if page not in self.frames:
+            if len(self.frames) == self.num_frames:
+                evicted_page = self.frames.popleft()
+                print(f"{page}F E{evicted_page}")
+            else:
+                print(f"{page}F")
+            self.frames.append(page)
+        else:
+            print(f"{page}NF")
+
+class LRUAlgo:
+    def __init__(self, num_frames):
+        self.num_frames = num_frames
+        self.frames = deque(maxlen=num_frames)
+        self.access_times = {} 
+
+    def exec(self, page):
+        if page not in self.frames:
+            if len(self.frames) == self.num_frames:
+                lru_page = min(self.access_times, key=self.access_times.get)
+                self.frames.remove(lru_page)
+                del self.access_times[lru_page]
+                print(f"{page}F E{lru_page}")
+            else:
+                print(f"{page}F")
+            self.frames.append(page)
+            self.access_times[page] = datetime.now()
+        else:
+            if page in self.access_times:
+                del self.access_times[page]
+            self.access_times[page] = datetime.now()
+            print(f"{page}NF")
+
+class ClockAlgo:
+    def __init__(self, num_frames):
+        self.num_frames = num_frames
+        self.frames = [None] * num_frames
+        self.clock_hand = 0
+
+    def exec(self, page):
+        if page not in [frame[0] for frame in self.frames if frame is not None]:
+            while True:
+                if self.frames[self.clock_hand] is None or self.frames[self.clock_hand][1] == 0:
+                    if self.frames[self.clock_hand] is not None:
+                        print(f"{page}F E{self.frames[self.clock_hand][0]}")
+                        self.frames[self.clock_hand] = (page, 1)
+                        break
+                    else:
+                        self.frames[self.clock_hand] = (page, 1)
+                        print(f"{page}F")
+                        self.clock_hand = (self.clock_hand + 1) % self.num_frames
+                        break
+                else:
+                    self.frames[self.clock_hand] = (self.frames[self.clock_hand][0], 0)
+                    self.clock_hand = (self.clock_hand + 1) % self.num_frames
+        else:
+            index = [i for i, frame in enumerate(self.frames) if frame is not None and frame[0] == page][0]
+            self.frames[index] = (page, 1)
+            print(f"{page}NF")
+
+class BeladyAlgo:
+    def __init__(self, num_frames):
+        self.num_frames = num_frames
+        self.frames = []
+
+    def exec(self, page, future_pages):
+        if page not in self.frames:
+            if len(self.frames) == self.num_frames:
+                if not future_pages:
+                    removed_page = max(self.frames, key=lambda p: future_pages.index(p) if p in future_pages else float ('inf'))
+                else:
+                    removed_page = max(self.frames, key=lambda p: future_pages.index(p) if p in future_pages else -1)
+                self.frames.remove(removed_page)
+                print(f"{page}F E{removed_page}")
+            else:
+                print(f"{page}F")
+            self.frames.append(page)
+        else:
+            print(f"{page}NF")
+
+class MainAlgorithm:
+    def __init__(self, algorithm, num_frames):
+        self.algorithm = algorithm
+        if algorithm == "FIFO":
+            self.algorithm_instance = FIFOAlgo(num_frames)
+        elif algorithm == "LRU":
+            self.algorithm_instance = LRUAlgo(num_frames)
+        elif algorithm == "CLOCK":
+            self.algorithm_instance = ClockAlgo(num_frames)
+        elif algorithm == "BELADY":
+            self.algorithm_instance = BeladyAlgo(num_frames)
+        else:
+            raise ValueError("Unsupported algorithm")
+
+    def run_algorithm(self, page, future_pages):
+        if self.algorithm == "BELADY":
+            self.algorithm_instance.exec(page, future_pages)
+        else:
+            self.algorithm_instance.exec(page)
+
+def main():
+    algorithm, num_frames = input("algorithm> ").split()
+    num_frames = int(num_frames)
+    pr_algo = MainAlgorithm(algorithm, num_frames)
+    future_pages = []
+    if algorithm == "BELADY":
+        while True:
+            try:
+                page = input("page> ")
+                if not page:
+                    break
+                page = int(page)
+                future_pages.append(page)
+            except EOFError:
+                pr_algo.run_algorithm(page, future_pages)
+                break
+    else:
+        while True:
+            try:
+                page = input("page> ")
+                if not page:
+                    break
+                page = int(page)
+                pr_algo.run_algorithm(page, future_pages)
+            except EOFError:
+                break
+
+
+    print("All done, goodbye!")
+
+if __name__ == "__main__":
+    main()
